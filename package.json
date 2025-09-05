@@ -1,0 +1,47 @@
+{
+  "name": "qtest-automation-integration",
+  "version": "1.0.0",
+  "description": "Automated Integration of Test Automation with qTest Management Tool",
+  "main": "compareSuitesToQtest.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "qtest:fetch": "node ExportQtestTCDetails.js",
+    "qtest:status": "node FetchExecutionStatus.js", 
+    "qtest:compare": "node compareSuitesToQtest.js",
+    "qtest:update": "node updateExecutionStatusAndComments.js",
+    "qtest:integration": "npm run qtest:fetch && npm run qtest:status && npm run qtest:compare",
+    "lint": "npx eslint *.js",
+    "validate": "node -c *.js"
+  },
+  "keywords": [
+    "qtest",
+    "test-automation", 
+    "webdriverio",
+    "integration",
+    "ci-cd",
+    "github-actions"
+  ],
+  "author": "Sheela Dubey",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@wdio/cli": "^8.24.0",
+    "@wdio/local-runner": "^8.24.0",
+    "@wdio/mocha-framework": "^8.24.0",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sheela-Dubey/Automated-Integration-of-Test-Automation-with-Test-Management-Tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sheela-Dubey/Automated-Integration-of-Test-Automation-with-Test-Management-Tools/issues"
+  },
+  "homepage": "https://github.com/Sheela-Dubey/Automated-Integration-of-Test-Automation-with-Test-Management-Tools#readme"
+}

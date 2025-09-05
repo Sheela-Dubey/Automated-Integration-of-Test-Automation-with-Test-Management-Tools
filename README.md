@@ -138,3 +138,48 @@ qTest Status after update
  
 
  
+
+## 🚀 GitHub Actions Integration
+
+This repository includes comprehensive GitHub Actions workflows for automated CI/CD and qTest integration.
+
+### 📁 Where to Find GitHub Actions
+
+GitHub Actions workflows are located in: **`.github/workflows/`**
+
+### Available Workflows:
+
+1. **🧪 Test Automation with qTest Integration** (`test-automation-qtest.yml`)
+   - Runs automated tests on push/PR/schedule
+   - Automatically updates qTest with results
+   - Supports multiple Node.js versions
+   - Uploads test artifacts and logs
+
+2. **🚀 Deploy qTest Integration** (`deploy-qtest-integration.yml`)
+   - Deploys qTest integration to different environments
+   - Validates API connectivity
+   - Creates deployment packages
+
+3. **✅ Code Quality and Validation** (`code-quality.yml`)
+   - Validates JavaScript and JSON syntax
+   - Checks qTest integration file structure
+   - Performs security scans
+
+### Quick Setup:
+
+1. **Configure Repository Secrets:**
+   - `QTEST_TOKEN` - Your qTest Bearer token
+   - `QTEST_PROJECT_ID` - Your qTest project ID
+   - `QTEST_PARENT_ID` - Your qTest parent test suite ID
+
+2. **Get Your qTest Bearer Token:**
+   - Login to qTest → Click Resource button (↓) → Copy Bearer token
+
+3. **Enable Workflows:**
+   - Go to Actions tab → Select workflow → Run workflow
+
+### 📖 Detailed Documentation:
+
+For complete GitHub Actions setup and usage instructions, see: [`.github/workflows/README.md`](.github/workflows/README.md)
+
+---

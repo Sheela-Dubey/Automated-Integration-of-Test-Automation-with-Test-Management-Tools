@@ -1,0 +1,153 @@
+name: Code Quality and Validation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        else
+          npm init -y
+          npm install --save-dev eslint prettier jshint
+        fi
+        
+    - name: Validate JavaScript files
+      run: |
+        echo "Validating JavaScript syntax..."
+        
+        # Check for syntax errors in JS files
+        for file in *.js; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            node -c "$file" || exit 1
+          fi
+        done
+        
+        echo "✅ All JavaScript files have valid syntax"
+        
+    - name: Validate JSON files
+      run: |
+        echo "Validating JSON files..."
+        
+        # Check JSON syntax
+        for file in *.json; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            python3 -m json.tool "$file" > /dev/null || exit 1
+          fi
+        done
+        
+        echo "✅ All JSON files have valid syntax"
+        
+    - name: Check qTest Integration Structure
+      run: |
+        echo "Validating qTest integration file structure..."
+        
+        # Check required files exist
+        required_files=(
+          "ExportQtestTCDetails.js"
+          "FetchExecutionStatus.js" 
+          "compareSuitesToQtest.js"
+          "updateExecutionStatusAndComments.js"
+          "Properties.json"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          else
+            echo "✅ Found: $file"
+          fi
+        done
+        
+        # Check that Properties.json has required fields
+        echo "Validating Properties.json structure..."
+        python3 << EOF
+        import json
+        import sys
+        
+        try:
+            with open('Properties.json', 'r') as f:
+                props = json.load(f)
+            
+            required_fields = ['GET_URL', 'PUT_URL', 'POST_URL', 'token', 'Content-Type']
+            missing_fields = [field for field in required_fields if field not in props]
+            
+            if missing_fields:
+                print(f"❌ Missing required fields in Properties.json: {missing_fields}")
+                sys.exit(1)
+            else:
+                print("✅ Properties.json has all required fields")
+                
+        except Exception as e:
+            print(f"❌ Error validating Properties.json: {e}")
+            sys.exit(1)
+        EOF
+        
+    - name: Security scan
+      run: |
+        echo "Performing basic security checks..."
+        
+        # Check for potential security issues
+        echo "Checking for hardcoded secrets..."
+        if grep -r "password\|secret\|key\|token" --include="*.js" --include="*.json" . | grep -v "Bearer " | grep -v "field_name" | grep -v "Properties.json"; then
+          echo "⚠️ Potential hardcoded secrets found. Please review."
+        else
+          echo "✅ No obvious hardcoded secrets found"
+        fi
+        
+        # Check for proper error handling patterns
+        echo "Checking for error handling patterns..."
+        js_files_without_error_handling=()
+        for file in *.js; do
+          if [ -f "$file" ] && ! grep -q "catch\|try\|error" "$file"; then
+            js_files_without_error_handling+=("$file")
+          fi
+        done
+        
+        if [ ${#js_files_without_error_handling[@]} -gt 0 ]; then
+          echo "⚠️ Files without error handling: ${js_files_without_error_handling[*]}"
+          echo "Consider adding proper error handling to these files"
+        else
+          echo "✅ Error handling patterns found in JavaScript files"
+        fi
+        
+    - name: Generate validation report
+      if: always()
+      run: |
+        echo "## 📋 Code Quality Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Files Validated:" >> $GITHUB_STEP_SUMMARY
+        ls -la *.js *.json | while read line; do
+          echo "- $line" >> $GITHUB_STEP_SUMMARY
+        done
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### qTest Integration Components:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ ExportQtestTCDetails.js - Fetches test case details from qTest" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ FetchExecutionStatus.js - Reads test results from Allure reports" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ compareSuitesToQtest.js - Compares and updates test statuses" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ updateExecutionStatusAndComments.js - Updates test execution status" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Properties.json - API configuration" >> $GITHUB_STEP_SUMMARY

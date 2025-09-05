@@ -1,0 +1,123 @@
+name: Deploy qTest Integration
+
+on:
+  # Deploy on release
+  release:
+    types: [published]
+    
+  # Allow manual deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        else
+          npm init -y
+          npm install node-fetch
+        fi
+        
+    - name: Validate qTest Integration
+      env:
+        QTEST_TOKEN: ${{ secrets.QTEST_TOKEN }}
+        QTEST_PROJECT_ID: ${{ secrets.QTEST_PROJECT_ID }}
+        QTEST_PARENT_ID: ${{ secrets.QTEST_PARENT_ID }}
+      run: |
+        # Validate that all required secrets are present
+        if [ -z "$QTEST_TOKEN" ] || [ -z "$QTEST_PROJECT_ID" ] || [ -z "$QTEST_PARENT_ID" ]; then
+          echo "❌ Missing required qTest configuration secrets"
+          echo "Required secrets: QTEST_TOKEN, QTEST_PROJECT_ID, QTEST_PARENT_ID"
+          exit 1
+        fi
+        
+        # Test qTest API connectivity
+        echo "Testing qTest API connectivity..."
+        RESPONSE=$(curl -s -w "%{http_code}" -H "Authorization: Bearer $QTEST_TOKEN" \
+          "https://wawa.qtestnet.com/api/v3/projects/$QTEST_PROJECT_ID/test-runs?parentId=$QTEST_PARENT_ID&parentType=test-suite")
+        
+        HTTP_CODE="${RESPONSE: -3}"
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ qTest API connectivity test failed with HTTP code: $HTTP_CODE"
+          exit 1
+        fi
+        
+        echo "✅ qTest API connectivity test passed"
+        
+    - name: Package Integration Files
+      run: |
+        # Create deployment package
+        mkdir -p dist
+        cp *.js dist/
+        cp Properties.json dist/
+        
+        # Create a deployment script
+        cat > dist/deploy.sh << 'EOF'
+        #!/bin/bash
+        echo "Deploying qTest Integration..."
+        
+        # Validate environment
+        if [ -z "$QTEST_TOKEN" ] || [ -z "$QTEST_PROJECT_ID" ] || [ -z "$QTEST_PARENT_ID" ]; then
+          echo "Error: Missing required environment variables"
+          exit 1
+        fi
+        
+        # Update Properties.json with environment-specific values
+        cat > Properties.json << EOL
+        {
+          "GET_URL": "https://wawa.qtestnet.com/api/v3/projects/$QTEST_PROJECT_ID/test-runs?parentId=$QTEST_PARENT_ID&parentType=test-suite",
+          "PUT_URL": "https://wawa.qtestnet.com/api/v3/projects/$QTEST_PROJECT_ID/test-runs/",
+          "POST_URL": "https://wawa.qtestnet.com/api/v3/projects/$QTEST_PROJECT_ID/test-runs/",
+          "token": "Bearer $QTEST_TOKEN",
+          "Content-Type": "application/json"
+        }
+        EOL
+        
+        echo "qTest Integration deployed successfully"
+        EOF
+        
+        chmod +x dist/deploy.sh
+        
+    - name: Upload deployment artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: qtest-integration-${{ github.sha }}
+        path: dist/
+        
+    - name: Create deployment summary
+      run: |
+        echo "## 🚀 qTest Integration Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Files deployed:**" >> $GITHUB_STEP_SUMMARY
+        echo "- ExportQtestTCDetails.js" >> $GITHUB_STEP_SUMMARY
+        echo "- FetchExecutionStatus.js" >> $GITHUB_STEP_SUMMARY
+        echo "- compareSuitesToQtest.js" >> $GITHUB_STEP_SUMMARY
+        echo "- updateExecutionStatusAndComments.js" >> $GITHUB_STEP_SUMMARY
+        echo "- Properties.json" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY

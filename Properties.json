@@ -1,0 +1,7 @@
+{
+	"GET_URL": "https://wawa.qtestnet.com/api/v3/projects/107214/test-runs?parentId=10722354&parentType=test-suite",
+	"PUT_URL": "https://wawa.qtestnet.com/api/v3/projects/107214/test-runs/",
+	"POST_URL": "https://wawa.qtestnet.com/api/v3/projects/107214/test-runs/",
+	"token": "Bearer ",
+	"Content-Type": "application/json"
+}
